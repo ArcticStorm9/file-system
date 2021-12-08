@@ -326,6 +326,11 @@ int readfile(int handle, uint64_t blocknum, void *buffer, uint64_t sz) {
     return sz;
 }
 
+// returns the directory's starting inode
+int createdirectory(int handle, uint64_t sz) {
+  return createfile(handle, sz, 1);
+}
+
 /*
 int createdirectory(int handle, uint64_t sz) {
 //   A directory is a special file that contains a mapping of file names to inode numbers.
