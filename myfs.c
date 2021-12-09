@@ -333,7 +333,7 @@ int createdirectory(int handle, uint64_t dirsize) {
   struct dirent initdirent;
   initdirent.name = "init";
   initdirent.finode = 0;
-  struct dirent entries[1] = {initdirent};
+  struct dirent entries[] = {initdirent};
   int dir_inode = createfile(handle, dirsize, 1);
   // pack entries and write to directory file
   packdata(handle, dir_inode, entries);
@@ -358,9 +358,17 @@ int deletedirectory(int handle, uint64_t inode) {
     // return -1
 }
 
-
 struct dirent* unpackdata(int handle, uint64_t dir_inode) {
-  // create an array of structs
+// // create an array of structs
+//   struct dirent* entries;
+//   uint64_t bufferBlock[BLOCK_SIZE];
+//   for (uint64_t i = 0; i < size; i++) {
+//       if (i % (BLOCK_SIZE - 1) == 0) {
+//           read(handle, node.blocks[curr] + INODES, bufferBlock);
+//           curr++;
+//       }
+//       ((uint8_t*)buffer)[i] = bufferBlock[i % BLOCK_SIZE];
+//   }
   return dir_inode;
 }
 
@@ -373,15 +381,35 @@ int packdata(int handle, uint64_t dir_inode, struct dirent* direntarr) {
 }
 
 void dumpdirectory(int handle, uint64_t dir_inode) {
-
+  dumpfileinfo(handle, dir_inode);
+  // unpack entries, print their file names and inodes
+  struct dirent* entries = unpackdata(handle, dir_inode);
+  printf("--- Directory entries ---\n");
+  for (int i = 0; i < countof(entries); i++) {
+    printf("Filename: %s, inode: %ld\n", entries[i].name, entries[i].finode);
+  }
+  printf("--- End directory entries ---\n");
 }
 
-void ls(int handle, uint64_t dir_inode) {
-
+char* ls(int handle, uint64_t dir_inode) {
+  // unpack entries, return their file names
+  struct dirent* entries = unpackdata(handle, dir_inode);
+  char strs[countof(entries)][14];
+  for (int i = 0; i < countof(entries); i++) {
+    strcpy(strs[i], entries[i].name);
+  }
+  return strs;
 }
 
 int findinodebyfilename(int handle, uint64_t dir_inode, char* name) {
-  return 0;
+  struct dirent* entries = unpackdata(handle, dir_inode);
+  for (int i = 0; i < countof(entries); i++) {
+    if (entries[i].name == name) {
+      return entries[i].finode;
+    }
+  }
+  printf("Could not find file with name %s\n", name);
+  return -1;
 }
 
 void removedirentry(int handle, uint64_t dir_inode) {
@@ -389,22 +417,39 @@ void removedirentry(int handle, uint64_t dir_inode) {
   // you tell it 'here's where to go, wheres where to start'
 }
 
-int hierdirsearch(int handle, char* name) {
+int hierdirsearch(int handle, char* name, int root_inode) {
   // split filename into an array using / as a delimiter
   // for each name in the split filename array, starting at the first inode,
   // find the inode associated with that name
-
-  /*
-  inodes = []
-  for name in names list:
-    i = findinodebyfilename(handle, inode)
-    if (type of file at i is not a directory) AND (not on the last name in the list):
-      give an error message
-    else:
-      inodes.append(i)
-    return last element of inodes*
-  */
-  return 0;
+  char *find;
+  find = strtok(name, "/");
+  struct dirent* entries;
+  // start at the root inode.
+  int current_directory = root_inode;
+  int name_inode = 0;
+  // char* current_name = "";
+  char* last_name = find[countof(find) - 1];
+  for (int i = 0; i < countof(find); i++) {
+    // check the current directory for the current name.
+    // for each name in the file path, check if that file exists in current_directory.
+    // if so, update the name to that file's name, and current_directory to that file's inode.
+    name_inode = findinodebyfilename(handle, current_directory, find[i]);
+    // if the current name being searched for can't be found in the current directory, it doesn't exist.
+    if (name_inode < 0) {
+      break;
+    } else {
+      // if the current name searched for was found,
+      // and that name is the same as the last name,
+      // return that name's inode.
+      if (find[i] == last_name) {
+        return name_inode;
+      } else {
+        // otherwise, update the current directory.
+        current_directory = name_inode;
+      }
+    }
+  }
+  return -1;
 }
 
 int adddirentry(int handle, uint64_t dir_inode, uint64_t file_inode, char* filename) {
