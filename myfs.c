@@ -277,7 +277,7 @@ int writefile(int handle, uint64_t blocknum, void *buffer, uint64_t sz) {
 	struct inode node;
 	readblock(handle, blocknum, &node);
 
-    uint8_t bl[BLOCK_SIZE];
+  uint8_t bl[BLOCK_SIZE];
 
 	if ((node.size / BLOCK_SIZE) == 0 && sz <= node.size) {
 		writeblock(handle, blocknum + INODES, buffer);
@@ -326,33 +326,109 @@ int readfile(int handle, uint64_t blocknum, void *buffer, uint64_t sz) {
     return sz;
 }
 
+/* DIRECTORY FUNCTIONS */
+
 // returns the directory's starting inode
-int createdirectory(int handle, uint64_t sz) {
-  return createfile(handle, sz, 1);
+int createdirectory(int handle, uint64_t dirsize) {
+  struct dirent initdirent;
+  initdirent.name = "init";
+  initdirent.finode = 0;
+  struct dirent entries[1] = {initdirent};
+  int dir_inode = createfile(handle, dirsize, 1);
+  // pack entries and write to directory file
+  packdata(handle, dir_inode, entries);
+  return dir_inode;
 }
 
-/*
-int createdirectory(int handle, uint64_t sz) {
-//   A directory is a special file that contains a mapping of file names to inode numbers.
-//   You may restrict it to an arbitrary maximum size (such as a single block)
-//   to simplify implementation.
-//   A simple list like this should suffice:
-//     - 1st inode (8 bytes), file name (actual length plus terminating null)
-//     - 2nd inode (8 bytes), file name (actual length plus terminating null)
-//     - …
-//  This adds a total overhead of 9 bytes per file name.
-//  If you pad the lengths to ensure that inode numbers are word aligned,
-//  the potential overhead is 16 bytes per entry.
-//
-//  A function to “unpack” the data structure into an array of string/inode pairs may be useful,
-//  along with a function to “pack” an array of string/inode pairs into the on-disk format.
-//  An array of strings is much like argv,
-//  except each entry has two elements of data instead of one (a struct would be useful here).
-    createfile(handle, sz, 1);
+int deletedirectory(int handle, uint64_t inode) {
+  // check if directory is empty.
+  // unpack directory entries
+  struct dirent* entries = unpackdata(handle, inode);
+  if (countof(entries) == 0 || (entries[0].finode == 0)) {
+    deletefile(handle, inode);
     return 0;
+  } else {
+    printf("Directory with inode %ld is not empty\n", inode);
+    return -1;
+  }
+  // if len(entries) == 0 or entry[0].finode == 0:
+    // deletefile(handle, inode);
+    // return 0
+  // else print error message
+    // return -1
 }
 
-void deletedirectory(int handle, uint64_t blocknum) {
+
+struct dirent* unpackdata(int handle, uint64_t dir_inode) {
+  // create an array of structs
+  return dir_inode;
+}
+
+int packdata(int handle, uint64_t dir_inode, struct dirent* direntarr) {
+  // take an array of dirents, pack it into on-disk format
+  // use strcpy for filenames
+  // for padding, use strlen, do math to figure out how much to add if any, write that many zeroes and move cursor up that much
+  // write the last entry w/ inode 0 to mark end
+  return dir_inode;
+}
+
+void dumpdirectory(int handle, uint64_t dir_inode) {
 
 }
-*/
+
+void ls(int handle, uint64_t dir_inode) {
+
+}
+
+int findinodebyfilename(int handle, uint64_t dir_inode, char* name) {
+  return 0;
+}
+
+void removedirentry(int handle, uint64_t dir_inode) {
+  // memmove in strings package
+  // you tell it 'here's where to go, wheres where to start'
+}
+
+int hierdirsearch(int handle, char* name) {
+  // split filename into an array using / as a delimiter
+  // for each name in the split filename array, starting at the first inode,
+  // find the inode associated with that name
+
+  /*
+  inodes = []
+  for name in names list:
+    i = findinodebyfilename(handle, inode)
+    if (type of file at i is not a directory) AND (not on the last name in the list):
+      give an error message
+    else:
+      inodes.append(i)
+    return last element of inodes*
+  */
+  return 0;
+}
+
+int adddirentry(int handle, uint64_t dir_inode, uint64_t file_inode, char* filename) {
+  // assert((sizeof(filename) / sizeof(char)) <= 14);
+  // need to have writetofile done first, since you are recording a list of file inodes and their respective names to the dir inode's data blocks.
+  struct dirent dirent;
+  dirent.name = filename; // how to pad for 16 bytes?
+  dirent.finode = ((uint8_t) file_inode);
+  struct inode node;
+  // to grow an array, use realloc
+
+  // can hold 256 entries?
+
+  // check that file is not already in directory
+
+  // unpack directory disk data into array of entry structs, or dirents
+  // be careful when repacking not to use the same char* filename for that block
+
+  // add new dirent to directory array
+
+  // repack array into directory disk data
+
+  // write disk data to directory file
+
+  // return dir inode
+  return 0;
+}
